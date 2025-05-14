@@ -57,5 +57,7 @@
             cargo-generate
           ];
         };
+
+        homeModules.default = import ./nix/ski.nix;
       });
 }
