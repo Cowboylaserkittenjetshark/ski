@@ -97,7 +97,7 @@
           };
         };
         config = mkIf cfg.enable {
-          home.packages = cfg.package;
+          home.packages = [cfg.package];
 
           home.file.".ssh/config.toml" = mkIf (cfg.settings != {}) {
             source = tomlFormat.generate "ski-config" cfg.settings;
