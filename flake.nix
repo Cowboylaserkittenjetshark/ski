@@ -9,24 +9,30 @@
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, crane, flake-utils, ... }:
-    flake-utils.lib.eachDefaultSystem (system:
-      let
-        pkgs = nixpkgs.legacyPackages.${system};
+  outputs = {
+    self,
+    nixpkgs,
+    crane,
+    flake-utils,
+    ...
+  }:
+    flake-utils.lib.eachDefaultSystem (system: let
+      pkgs = nixpkgs.legacyPackages.${system};
 
-        craneLib = crane.mkLib pkgs;
+      craneLib = crane.mkLib pkgs;
 
-        commonArgs = {
-          src = craneLib.cleanCargoSource ./.;
-          strictDeps = true;
+      commonArgs = {
+        src = craneLib.cleanCargoSource ./.;
+        strictDeps = true;
 
-          buildInputs = pkgs.lib.optionals pkgs.stdenv.isDarwin [
-            pkgs.libiconv
-          ];
-          nativeBuildInputs = [pkgs.installShellFiles];
-        };
+        buildInputs = pkgs.lib.optionals pkgs.stdenv.isDarwin [
+          pkgs.libiconv
+        ];
+        nativeBuildInputs = [pkgs.installShellFiles];
+      };
 
-        ski = craneLib.buildPackage (commonArgs // {
+      ski = craneLib.buildPackage (commonArgs
+        // {
           cargoArtifacts = craneLib.buildDepsOnly commonArgs;
           postInstall = ''
             installShellCompletion \
@@ -35,29 +41,64 @@
               --zsh target/_ski
           '';
         });
-      in
-      {
-        checks = {
-          inherit ski;
+    in {
+      checks = {
+        inherit ski;
+      };
+
+      packages.default = ski;
+
+      apps.default = flake-utils.lib.mkApp {
+        drv = ski;
+      };
+
+      devShells.default = craneLib.devShell {
+        checks = self.checks.${system};
+        packages = with pkgs; [
+          nil
+          statix
+          deadnix
+          rust-analyzer
+          cargo-generate
+        ];
+      };
+
+      homeModules.default = {config, lib, pkgs, ...}: let
+        cfg = config.programs.ski;
+        inherit (lib) mkOption mkEnableOption mkPackageOption mkIf;
+        tomlFormat = pkgs.formats.toml {};
+      in {
+        options.programs.ski = {
+          enable = mkEnableOption "ski";
+
+          settings = mkOption {
+            type = tomlFormat.type;
+            default = {};
+            example = {
+              pairs = {
+                k1.name = "k1_1234_ed25519";
+                k2 = {
+                  public = "/a/path/outside/of/.ssh/k2_4321.pub";
+                  private = "/a/path/outside/of/.ssh/k2_4321";
+                };
+              };
+              roles = {
+                auth.target = "id_ed25519_sk";
+                sign.target = "signing-key";
+              };
+            };
+            description = "Options to add to the {file}`ski.toml` file";
+          };
+
+          package = mkPackageOption self.packages.${system} "ski" {};
         };
+        config = mkIf cfg.enable {
+          home.packages = cfg.package;
 
-        packages.default = ski;
-
-        apps.default = flake-utils.lib.mkApp {
-          drv = ski;
+          home.file.".ssh/config.toml" = mkIf (cfg.settings != {}) {
+            source = tomlFormat.generate "ski-config" cfg.settings;
+          };
         };
-
-        devShells.default = craneLib.devShell {
-          checks = self.checks.${system};
-          packages = with pkgs; [
-            nil
-            statix
-            deadnix
-            rust-analyzer
-            cargo-generate
-          ];
-        };
-
-        homeModules.default = import ./nix/ski.nix;
-      });
+      };
+    });
 }
