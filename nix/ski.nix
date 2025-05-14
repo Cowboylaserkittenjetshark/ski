@@ -3,7 +3,7 @@
   inherit (lib) mkOption mkEnableOption mkPackageOption mkIf;
   tomlFormat = pkgs.formats.toml { };
 in {
-  options.ski = {
+  options.programs.ski = {
     enable = mkEnableOption "ski";
 
     settings = mkOption {
