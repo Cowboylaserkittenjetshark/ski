@@ -1,4 +1,4 @@
-{config, lib, pkgs, ...}: let
+{config, lib, pkgs, self, ...}: let
   cfg = config.programs.ski;
   inherit (lib) mkOption mkEnableOption mkPackageOption mkIf;
   tomlFormat = pkgs.formats.toml { };
@@ -25,7 +25,7 @@ in {
       description = "Options to add to the {file}`ski.toml` file";
     };
 
-    package = mkPackageOption pkgs "ski" { };
+    package = mkPackageOption self.packages.${pkgs.system} "ski" { };
   };
   config = mkIf cfg.enable {
     home.packages = cfg.package;
