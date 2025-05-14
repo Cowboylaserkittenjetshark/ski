@@ -1,5 +1,5 @@
 {config, lib, pkgs, ...}: let
-  cfg = config.ski;
+  cfg = config.programs.ski;
   inherit (lib) mkOption mkEnableOption mkPackageOption mkIf;
   tomlFormat = pkgs.formats.toml { };
 in {
