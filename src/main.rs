@@ -21,11 +21,12 @@ fn main() -> color_eyre::Result<()> {
     let config: Config = toml::from_str(&config_str)?;
 
     if let Some(pair) = config.pairs.get(&args.pair) {
-        let pair_pub = path.join(pair.public.clone().unwrap_or_else(|| {
+        let mut pair_pub = path.join(pair.public.clone().unwrap_or_else(|| {
             pair.name
                 .clone()
-                .unwrap_or_else(|| (args.pair.clone() + ".pub").into())
+                .unwrap_or_else(|| args.pair.clone().into())
         }));
+        pair_pub.set_extension("pub");
         let pair_priv = path.join(pair.private.clone().unwrap_or_else(|| {
             pair.name
                 .clone()
