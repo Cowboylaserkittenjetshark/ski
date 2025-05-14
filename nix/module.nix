@@ -33,14 +33,15 @@ in {
 
     package = mkOption {
       type = types.package;
+      default = self.packages.${system}.default;
       description = "The ski package to use.";
     };
   };
   config = mkIf cfg.enable {
     home.packages = [cfg.package];
-    programs.ski.package = mkDefault self.packages.${system}.default;
+    # programs.ski.package = mkDefault self.packages.${system}.default;
 
-    home.file.".ssh/config.toml" = mkIf (cfg.settings != {}) {
+    home.file.".ssh/ski.toml" = mkIf (cfg.settings != {}) {
       source = tomlFormat.generate "ski-config" cfg.settings;
     };
   };
