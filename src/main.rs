@@ -1,92 +1,98 @@
-use color_eyre::Result;
-use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
-use ratatui::{
-    style::Stylize,
-    text::Line,
-    widgets::{Block, Paragraph},
-    DefaultTerminal, Frame,
+mod cli;
+
+use clap::Parser;
+use color_eyre::eyre::{Context, OptionExt, eyre};
+use serde::Deserialize;
+use std::{
+    collections::HashMap,
+    fs::{read_to_string, remove_file},
+    os::unix::fs::symlink,
+    path::{Path, PathBuf},
 };
 
 fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
-    let terminal = ratatui::init();
-    let result = App::new().run(terminal);
-    ratatui::restore();
-    result
+    let path = dirs::home_dir()
+        .ok_or_eyre("Failed to get user home directory")?
+        .join(".ssh/");
+    let args = cli::Args::parse();
+    let config_str = read_to_string(args.config.as_ref().unwrap_or(&path.join("ski.toml")))
+        .wrap_err("Failed to open config file")?;
+    let config: Config = toml::from_str(&config_str)?;
+
+    if let Some(pair) = config.pairs.get(&args.pair) {
+        let pair_pub = path.join(pair.public.clone().unwrap_or_else(|| {
+            pair.name
+                .clone()
+                .unwrap_or_else(|| (args.pair.clone() + ".pub").into())
+        }));
+        let pair_priv = path.join(pair.private.clone().unwrap_or_else(|| {
+            pair.name
+                .clone()
+                .unwrap_or_else(|| args.pair.clone().into())
+        }));
+
+        for role in args.roles {
+            if let Some(role) = config.roles.get(&role) {
+                if role.target.is_absolute() {
+                    return Err(eyre!(
+                        "Role target {} may not be an absolute path",
+                        role.target.display()
+                    ));
+                } else {
+                    let mut target_path = path.join(role.target.clone());
+                    link(&pair_priv, &target_path)?;
+                    if target_path.set_extension("pub") {
+                        link(&pair_pub, &target_path)?;
+                    }
+                }
+            } else {
+                return Err(eyre!("Role {} not defined", role));
+            }
+        }
+    } else {
+        return Err(eyre!("Pair {} not defined", args.pair));
+    }
+    Ok(())
 }
 
-/// The main application which holds the state and logic of the application.
-#[derive(Debug, Default)]
-pub struct App {
-    /// Is the application running?
-    running: bool,
+fn link(source: &Path, target: &Path) -> color_eyre::Result<()> {
+    let target_exists = target.try_exists()?;
+    if (target_exists && target.is_symlink()) || !target_exists {
+        if source.try_exists()? {
+            if target_exists {
+                remove_file(target)?;
+            }
+            symlink(source, target)?;
+        } else {
+            return Err(eyre!("Source key {} does not exist", source.display()));
+        }
+    } else if target_exists {
+        return Err(eyre!(
+            "Role target {} exists but is not a symlink",
+            target.display()
+        ));
+    }
+    Ok(())
 }
 
-impl App {
-    /// Construct a new instance of [`App`].
-    pub fn new() -> Self {
-        Self::default()
-    }
+#[derive(Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Config {
+    roles: HashMap<String, Role>,
+    pairs: HashMap<String, Pair>,
+}
 
-    /// Run the application's main loop.
-    pub fn run(mut self, mut terminal: DefaultTerminal) -> Result<()> {
-        self.running = true;
-        while self.running {
-            terminal.draw(|frame| self.render(frame))?;
-            self.handle_crossterm_events()?;
-        }
-        Ok(())
-    }
+#[derive(Debug, Default, Deserialize, Clone)]
+#[serde(deny_unknown_fields)]
+struct Role {
+    target: PathBuf,
+}
 
-    /// Renders the user interface.
-    ///
-    /// This is where you add new widgets. See the following resources for more information:
-    ///
-    /// - <https://docs.rs/ratatui/latest/ratatui/widgets/index.html>
-    /// - <https://github.com/ratatui/ratatui/tree/main/ratatui-widgets/examples>
-    fn render(&mut self, frame: &mut Frame) {
-        let title = Line::from("Ratatui Simple Template")
-            .bold()
-            .blue()
-            .centered();
-        let text = "Hello, Ratatui!\n\n\
-            Created using https://github.com/ratatui/templates\n\
-            Press `Esc`, `Ctrl-C` or `q` to stop running.";
-        frame.render_widget(
-            Paragraph::new(text)
-                .block(Block::bordered().title(title))
-                .centered(),
-            frame.area(),
-        )
-    }
-
-    /// Reads the crossterm events and updates the state of [`App`].
-    ///
-    /// If your application needs to perform work in between handling events, you can use the
-    /// [`event::poll`] function to check if there are any events available with a timeout.
-    fn handle_crossterm_events(&mut self) -> Result<()> {
-        match event::read()? {
-            // it's important to check KeyEventKind::Press to avoid handling key release events
-            Event::Key(key) if key.kind == KeyEventKind::Press => self.on_key_event(key),
-            Event::Mouse(_) => {}
-            Event::Resize(_, _) => {}
-            _ => {}
-        }
-        Ok(())
-    }
-
-    /// Handles the key events and updates the state of [`App`].
-    fn on_key_event(&mut self, key: KeyEvent) {
-        match (key.modifiers, key.code) {
-            (_, KeyCode::Esc | KeyCode::Char('q'))
-            | (KeyModifiers::CONTROL, KeyCode::Char('c') | KeyCode::Char('C')) => self.quit(),
-            // Add other key handlers here.
-            _ => {}
-        }
-    }
-
-    /// Set running to false to quit the application.
-    fn quit(&mut self) {
-        self.running = false;
-    }
+#[derive(Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Pair {
+    name: Option<PathBuf>,
+    public: Option<PathBuf>,
+    private: Option<PathBuf>,
 }

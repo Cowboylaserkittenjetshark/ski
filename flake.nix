@@ -23,10 +23,17 @@
           buildInputs = pkgs.lib.optionals pkgs.stdenv.isDarwin [
             pkgs.libiconv
           ];
+          nativeBuildInputs = [pkgs.installShellFiles];
         };
 
         ski = craneLib.buildPackage (commonArgs // {
           cargoArtifacts = craneLib.buildDepsOnly commonArgs;
+          postInstall = ''
+            installShellCompletion \
+              --bash target/ski.bash \
+              --fish target/ski.fish \
+              --zsh target/_ski
+          '';
         });
       in
       {
