@@ -1,20 +1,28 @@
-self: {
+self:
+{
   config,
   lib,
   pkgs,
   ...
-}: let
+}:
+let
   cfg = config.programs.ski;
-  inherit (lib) mkOption mkEnableOption mkIf mkDefault types;
+  inherit (lib)
+    mkOption
+    mkEnableOption
+    mkIf
+    types
+    ;
   inherit (pkgs.stdenv.hostPlatform) system;
-  tomlFormat = pkgs.formats.toml {};
-in {
+  tomlFormat = pkgs.formats.toml { };
+in
+{
   options.programs.ski = {
     enable = mkEnableOption "ski";
 
     settings = mkOption {
       type = tomlFormat.type;
-      default = {};
+      default = { };
       example = {
         pairs = {
           k1.name = "k1_1234_ed25519";
@@ -38,10 +46,9 @@ in {
     };
   };
   config = mkIf cfg.enable {
-    home.packages = [cfg.package];
-    # programs.ski.package = mkDefault self.packages.${system}.default;
+    home.packages = [ cfg.package ];
 
-    home.file.".ssh/ski.toml" = mkIf (cfg.settings != {}) {
+    home.file.".ssh/ski.toml" = mkIf (cfg.settings != { }) {
       source = tomlFormat.generate "ski-config" cfg.settings;
     };
   };
