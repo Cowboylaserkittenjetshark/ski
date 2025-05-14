@@ -1,4 +1,4 @@
-inputs: {config, lib, pkgs, ...}: let
+self: {config, lib, pkgs, ...}: let
         cfg = config.programs.ski;
         inherit (lib) mkOption mkEnableOption mkIf mkDefault types;
         inherit (pkgs.stdenv.hostPlatform) system;
@@ -33,7 +33,7 @@ inputs: {config, lib, pkgs, ...}: let
         };
         config = mkIf cfg.enable {
           home.packages = [cfg.package];
-          programs.ski.package = mkDefault inputs.self.packages.${system}.ski;
+          programs.ski.package = mkDefault self.packages.${system}.default;
 
           home.file.".ssh/config.toml" = mkIf (cfg.settings != {}) {
             source = tomlFormat.generate "ski-config" cfg.settings;

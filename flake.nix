@@ -64,6 +64,6 @@
       };
 
     }) // {
-      homeModules.default = import ./nix/module.nix inputs;
+      homeModules.default = import ./nix/module.nix self;
   };
 }
