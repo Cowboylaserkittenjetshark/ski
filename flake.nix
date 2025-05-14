@@ -9,7 +9,7 @@
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = {
+  outputs = inputs @ {
     self,
     nixpkgs,
     crane,
@@ -63,7 +63,7 @@
         ];
       };
 
-      homeModules.default = {config, lib, pkgs, ...}: let
+      homeModules.default = inputs: {config, lib, pkgs, ...}: let
         cfg = config.programs.ski;
         inherit (lib) mkOption mkEnableOption mkIf types;
         tomlFormat = pkgs.formats.toml {};
@@ -103,6 +103,6 @@
             source = tomlFormat.generate "ski-config" cfg.settings;
           };
         };
-      };
+      } inputs;
     });
 }
