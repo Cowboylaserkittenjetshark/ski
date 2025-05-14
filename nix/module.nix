@@ -33,7 +33,7 @@ inputs: {config, lib, pkgs, ...}: let
         };
         config = mkIf cfg.enable {
           home.packages = [cfg.package];
-          programs.ski.package = mkDefault inputs.self.packages.${system}.ski;
+          # programs.ski.package = mkDefault inputs.self.packages.${system}.ski;
 
           home.file.".ssh/config.toml" = mkIf (cfg.settings != {}) {
             source = tomlFormat.generate "ski-config" cfg.settings;
