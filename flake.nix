@@ -66,6 +66,7 @@
       homeModules.default = inputs: {config, lib, pkgs, ...}: let
         cfg = config.programs.ski;
         inherit (lib) mkOption mkEnableOption mkIf types;
+        inherit (pkgs.stdenv.hostPlatform) system;
         tomlFormat = pkgs.formats.toml {};
       in {
         options.programs.ski = {
@@ -92,7 +93,7 @@
           
           package = mkOption {
             type = types.package;
-            default = ski;
+            default = inputs.self.packages.${system}.ski;
             description = "The ski package to use.";
           };
         };
