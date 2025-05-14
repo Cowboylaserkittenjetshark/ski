@@ -62,8 +62,8 @@
           cargo-generate
         ];
       };
-
-    }) // {
+    })
+    // {
       homeModules.default = import ./nix/module.nix self;
-  };
+    };
 }
