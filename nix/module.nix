@@ -29,6 +29,10 @@ in
           k2 = {
             public = "/a/path/outside/of/.ssh/k2_4321.pub";
             private = "/a/path/outside/of/.ssh/k2_4321";
+            default_roles = [
+              "auth"
+              "sign"
+            ];
           };
         };
         roles = {

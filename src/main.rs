@@ -1,13 +1,13 @@
 mod cli;
+mod config;
 
 use clap::Parser;
 use color_eyre::eyre::{Context, OptionExt, eyre};
-use serde::Deserialize;
+use config::Config;
 use std::{
-    collections::HashMap,
     fs::{read_to_string, remove_file},
     os::unix::fs::symlink,
-    path::{Path, PathBuf},
+    path::Path,
 };
 
 fn main() -> color_eyre::Result<()> {
@@ -33,7 +33,11 @@ fn main() -> color_eyre::Result<()> {
                 .unwrap_or_else(|| args.pair.clone().into())
         }));
 
-        for role in args.roles {
+        let mut roles = args.roles;
+        if roles.len() == 0 {
+            roles.append(&mut pair.default_roles.clone());
+        }
+        for role in roles {
             if let Some(role) = config.roles.get(&role) {
                 if role.target.is_absolute() {
                     return Err(eyre!(
@@ -75,25 +79,4 @@ fn link(source: &Path, target: &Path) -> color_eyre::Result<()> {
         ));
     }
     Ok(())
-}
-
-#[derive(Debug, Default, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct Config {
-    roles: HashMap<String, Role>,
-    pairs: HashMap<String, Pair>,
-}
-
-#[derive(Debug, Default, Deserialize, Clone)]
-#[serde(deny_unknown_fields)]
-struct Role {
-    target: PathBuf,
-}
-
-#[derive(Debug, Default, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct Pair {
-    name: Option<PathBuf>,
-    public: Option<PathBuf>,
-    private: Option<PathBuf>,
 }
