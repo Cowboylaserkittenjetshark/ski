@@ -20,5 +20,5 @@ pub struct Pair {
     pub name: Option<PathBuf>,
     pub public: Option<PathBuf>,
     pub private: Option<PathBuf>,
-    pub default_roles: Vec<String>,
+    pub default_roles: Option<Vec<String>>,
 }

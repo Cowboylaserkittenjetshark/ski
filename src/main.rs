@@ -35,7 +35,9 @@ fn main() -> color_eyre::Result<()> {
 
         let mut roles = args.roles;
         if roles.len() == 0 {
-            roles.append(&mut pair.default_roles.clone());
+            if let Some(d) = &pair.default_roles {
+                roles.append(&mut d.clone());
+            }
         }
         for role in roles {
             if let Some(role) = config.roles.get(&role) {
